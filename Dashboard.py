@@ -57,7 +57,7 @@ BRAND_CONFIG = {
     "Bake Brother": "363e1bba0b9907b65532",
     "Ohsho": "abb1c88b8db54ca2ee87",
     "ตั่วเปา": "a8b719f0d97ea01d264c",
-    "Shopจารจู": "2e8f853bc23b3ba8b140"
+    "Maesriruen": "2e8f853bc23b3ba8b140"
 }
 CONFIG_API = "https://api.npoint.io/9898efa2a5853bf5f886"
 

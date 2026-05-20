@@ -281,14 +281,14 @@ if not full_df.empty:
 
     with st.sidebar:
         st.markdown("---")
-        with st.expander("🚫 จัดการ เปิด/ปิด สาขา", expanded=False):
+        with st.expander("🚫 จัดการสิทธิ์รายสาขา (Warranty)", expanded=False):
             search_query = st_keyup("🔍 ค้นหาสาขา...", key=f"keyup_search_{selected_brand}").strip().lower()
             master_key = f"master_{selected_brand}"
             def on_master_change():
                 for s in shops: st.session_state[f"tog_{selected_brand}_{s}"] = st.session_state[master_key]
             
             all_on = all(brand_settings.get(s, True) for s in shops)
-            st.toggle("🔔 **เปิด/ปิด ทั้งหมด**", value=all_on, key=master_key, on_change=on_master_change)
+            st.toggle("🔔 **เปิดสิทธิ์ทำงานทั้งหมด**", value=all_on, key=master_key, on_change=on_master_change)
 
             updated_settings = {s: st.session_state.get(f"tog_{selected_brand}_{s}", brand_settings.get(s, True)) for s in shops}
             filtered_shops = [s for s in shops if search_query in s.lower()] if search_query else shops
@@ -296,12 +296,13 @@ if not full_df.empty:
             for shop in filtered_shops:
                 t_key = f"tog_{selected_brand}_{shop}"
                 if t_key not in st.session_state: st.session_state[t_key] = brand_settings.get(shop, True)
-                updated_settings[shop] = st.toggle(f"{shop}", key=t_key)
+                # สวิตช์ปิดตรงนี้จะเปลี่ยนสิทธิ์หน้าร้านเป็น Out of Warranty ทันทีเมื่อเซฟ
+                updated_settings[shop] = st.toggle(f"Active : {shop}", key=t_key)
 
             if st.button("💾 บันทึกการตั้งค่า", type="primary", use_container_width=True, key="save_shops"):
                 current_full_config[selected_brand] = updated_settings
                 save_config(current_full_config)
-                st.success("บันทึกสำเร็จ!")
+                st.success("บันทึกสิทธิ์สำเร็จ!")
                 st.rerun()
         
         if st.button("🔙 Back to Main Page", key="back_to_welcome", use_container_width=True):
@@ -357,7 +358,7 @@ if not full_df.empty:
                     st.markdown(
                         f'<div class="problem-item"><b>{shop}</b><br>'
                         f'<span style="color:#d32f2f; font-size:0.75rem;">พบปัญหา {int(count)} ครั้ง</span></div>',
-                        unsafe_allow_html=True
+                        f'</div>', unsafe_allow_html=True
                     )
 
     def apply_style(val):

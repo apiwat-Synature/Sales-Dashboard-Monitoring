@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 💡 ใส่ CSS Custom Style ให้กับสวิตช์ Toggle ทั้งสองประเภทแยกสีกันชัดเจน
+# 💡 แก้ไข CSS ให้สวิตช์ทั้ง 2 ฝั่งเมื่อเปิดใช้งาน (Checked) แสดงเป็นสีแดง และเมื่อปิดแสดงเป็นสีเทาตามบรีฟ
 st.markdown("""
     <style>
     [data-testid="stSidebarContent"] { padding-top: 0rem !important; }
@@ -36,18 +36,17 @@ st.markdown("""
     /* ปรับขนาดตัวอักษรในช่อง Input ของหน้า Config */
     div[data-testid="stExpander"] input { font-size: 0.9rem !important; }
 
-    /* 🟢 คอลัมน์ที่ 2 (แสดงผล) → สีเขียว — ใช้ :has() + span แทน div */
+    /* 🔴 ปรับคอลัมน์ที่ 2 (เปิด-ปิดร้าน) → เปิดเป็นสีแดง */
     [data-testid="stExpander"] [data-testid="column"]:nth-child(2) [data-testid="stToggle"] label:has(input:checked) > span:first-of-type {
-        background-color: #28a745 !important;
-        border-color: #28a745 !important;
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
     }
-    /* fallback: input + span sibling */
     [data-testid="stExpander"] [data-testid="column"]:nth-child(2) input[type="checkbox"]:checked + span {
-        background-color: #28a745 !important;
-        border-color: #28a745 !important;
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
     }
 
-    /* 🔴 คอลัมน์ที่ 3 (ระงับดึงยอด) → สีแดง */
+    /* 🔴 ปรับคอลัมน์ที่ 3 (เปิด-ปิดส่งยอด) → เปิดเป็นสีแดง */
     [data-testid="stExpander"] [data-testid="column"]:nth-child(3) [data-testid="stToggle"] label:has(input:checked) > span:first-of-type {
         background-color: #dc3545 !important;
         border-color: #dc3545 !important;
@@ -288,27 +287,26 @@ if not full_df.empty:
 
     with st.sidebar:
         st.markdown("---")
-# --- เปลี่ยนโค้ดภายใน st.sidebar -> st.expander("🚫 จัดการ เปิด/ปิด / ดึงยอด สาขา") เป็นก้อนนี้ได้เลยครับ ---
-# --- วางทับโค้ด st.expander("🚫 จัดการ เปิด/ปิด สาขา") อันเดิมได้เลยครับ ---
+        # 🔗 [รวมระบบแก้ปุ่มค้าง + แสตมป์ข้อมูลลง API โครงสร้าง 2 ฝั่ง (Active & Sync) เรียบร้อยแล้วครับ]
         with st.expander("🚫 จัดการ เปิด/ปิด / ดึงยอด สาขา", expanded=False):
             search_query = st_keyup("🔍 ค้นหาสาขา...", key=f"keyup_search_{selected_brand}").strip().lower()
             
-            # 1. จัดทำข้อมูลเริ่มต้น (แตกโครงสร้าง dict เผื่อกรณีข้อมูลเก่าเป็น boolean)
+            # 1. จัดทำข้อมูลเริ่มต้น (เปลี่ยนคีย์ไปใช้ sync_active เพื่อแสดงสีแดงเมื่อเปิด)
             updated_settings = {}
             for s in shops:
                 old_val = brand_settings.get(s, True)
                 if isinstance(old_val, dict):
                     updated_settings[s] = {
                         "active": old_val.get("active", True),
-                        "disable_sync": old_val.get("disable_sync", False)
+                        "sync_active": old_val.get("sync_active", old_val.get("active", True))
                     }
                 else:
                     updated_settings[s] = {
                         "active": old_val,
-                        "disable_sync": False
+                        "sync_active": old_val
                     }
 
-            # 2. Callbacks สำหรับปุ่ม Master ทั้ง 2 ฝั่ง
+            # 2. Callbacks สำหรับปุ่ม Master ทั้ง 2 ฝั่งเพื่อแก้ปัญหาเรื่องปุ่มเลื่อนค้าง
             master_act_key = f"master_act_{selected_brand}"
             master_sync_key = f"master_sync_{selected_brand}"
 
@@ -322,11 +320,11 @@ if not full_df.empty:
                 for s in shops:
                     st.session_state[f"tog_sync_{selected_brand}_{s}"] = m_val
 
-            # 3. คำนวณสถานะปุ่ม Master จากค่าสดๆ ใน session_state ป้องกันปุ่มค้าง
+            # 3. คำนวณสถานะปุ่ม Master จากค่าใน session_state ปัจจุบัน
             all_act_on = all(st.session_state.get(f"tog_act_{selected_brand}_{s}", updated_settings[s]["active"]) for s in shops)
-            all_sync_on = all(st.session_state.get(f"tog_sync_{selected_brand}_{s}", updated_settings[s]["disable_sync"]) for s in shops)
+            all_sync_on = all(st.session_state.get(f"tog_sync_{selected_brand}_{s}", updated_settings[s]["sync_active"]) for s in shops)
 
-            # 🛠️ ด้านบน: สวิตช์ เปิด/ปิด ทั้งหมด แยก 2 ฝั่งคู่กันแบบแถวเดียวคลีนๆ
+            # 🛠️ ด้านบน: สวิตช์ เปิด/ปิด ทั้งหมด แถวเดียวคลีนๆ คู่กัน
             col_m_name, col_m_act, col_m_sync = st.columns([1.8, 1.1, 1.1])
             with col_m_name:
                 st.markdown("<div style='font-size: 0.8rem; font-weight: bold; color: #1e293b; padding-top: 4px;'>🔔 เปิด/ปิด ทั้งหมด</div>", unsafe_allow_html=True)
@@ -367,28 +365,27 @@ if not full_df.empty:
                     with col_sync:
                         t_sync_key = f"tog_sync_{selected_brand}_{shop}"
                         if t_sync_key not in st.session_state:
-                            st.session_state[t_sync_key] = updated_settings[shop]["disable_sync"]
-                        val_sync = st.toggle("Block", key=t_sync_key, label_visibility="collapsed")
+                            st.session_state[t_sync_key] = updated_settings[shop]["sync_active"]
+                        val_sync = st.toggle("Sync", key=t_sync_key, label_visibility="collapsed")
 
                     updated_settings[shop] = {
                         "active": val_active,
-                        "disable_sync": val_sync
+                        "sync_active": val_sync
                     }
                     st.markdown("<div style='margin: 4px 0; border-bottom: 1px solid #f1f5f9;'></div>", unsafe_allow_html=True)
                     
             st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
             if st.button("💾 บันทึกการตั้งค่าสาขา", type="primary", use_container_width=True, key="save_shops"):
-                # เก็บตกเก็บค่าของทุกสาขา (รวมถึงตัวที่ถูกซ่อนอยู่จากการค้นหา)
                 final_settings = {}
                 for s in shops:
                     final_settings[s] = {
                         "active": st.session_state.get(f"tog_act_{selected_brand}_{s}", updated_settings[s]["active"]),
-                        "disable_sync": st.session_state.get(f"tog_sync_{selected_brand}_{s}", updated_settings[s]["disable_sync"])
+                        "sync_active": st.session_state.get(f"tog_sync_{selected_brand}_{s}", updated_settings[s]["sync_active"])
                     }
                 
                 current_full_config[selected_brand] = final_settings
                 save_config(current_full_config)
-                st.success("บันทึกสำเร็จ!")
+                st.success("บันทึกและสแตมป์สถานะ 2 ฝั่งลง API เรียบร้อย!")
                 st.rerun()
                 
         if st.button("🔙 Back to Main Page", key="back_to_welcome", use_container_width=True):

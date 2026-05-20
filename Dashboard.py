@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 💡 [ปรับแต่งเพิ่มเติม] ใส่ CSS Custom Style ให้กับสวิตช์ Toggle ทั้งสองประเภทแยกสีกันชัดเจน
+# 💡 [ปรับปรุง CSS เจาะจงสีปุ่ม] สวิตช์ Active เป็นสีเขียว / สวิตช์ Block เป็นสีแดง
 st.markdown("""
     <style>
     [data-testid="stSidebarContent"] { padding-top: 0rem !important; }
@@ -36,15 +36,19 @@ st.markdown("""
     /* ปรับขนาดตัวอักษรในช่อง Input ของหน้า Config */
     div[data-testid="stExpander"] input { font-size: 0.9rem !important; }
 
-    /* 🟢 ล็อคเป้าสไตล์สวิตช์แสดงผล (Active) บังคับให้เป็น สีเขียว */
-    div[data-testid="stSidebar"] div[id^="tog_act_wrap_"] div[data-testid="stCheckboxTarget"] div[data-focus-visible="true"] + div,
-    div[data-testid="stSidebar"] div[id^="tog_act_wrap_"] button[aria-checked="true"] {
+    /* 🟢 สไตล์สวิตช์ฝั่งแสดงผล (Active) บังคับเปลี่ยนเป็น สีเขียว */
+    div[id^="tog_act_wrap_"] div[data-testid="stCheckboxTarget"] > div:first-child[style*="background-color"] {
+        background-color: rgb(40, 167, 69) !important;
+    }
+    div[id^="tog_act_wrap_"] button[aria-checked="true"] {
         background-color: #28a745 !important;
     }
-    
-    /* 🔴 ล็อคเป้าสไตล์สวิตช์ระงับยอด (Block) บังคับให้เป็น สีแดง */
-    div[data-testid="stSidebar"] div[id^="tog_sync_wrap_"] div[data-testid="stCheckboxTarget"] div[data-focus-visible="true"] + div,
-    div[data-testid="stSidebar"] div[id^="tog_sync_wrap_"] button[aria-checked="true"] {
+
+    /* 🔴 สไตล์สวิตช์ฝั่งระงับยอด (Block) บังคับเปลี่ยนเป็น สีแดง */
+    div[id^="tog_sync_wrap_"] div[data-testid="stCheckboxTarget"] > div:first-child[style*="background-color"] {
+        background-color: rgb(220, 53, 69) !important;
+    }
+    div[id^="tog_sync_wrap_"] button[aria-checked="true"] {
         background-color: #dc3545 !important;
     }
     </style>
@@ -298,8 +302,7 @@ if not full_df.empty:
 
             filtered_shops = [s for s in shops if search_query in s.lower()] if search_query else shops
 
-            # หัวตารางแบบคลีนๆ สบายสายตา
-# หัวตารางแบบคลีนๆ
+            # หัวตาราง
             st.markdown("""
                 <div style="display: flex; background-color: #f1f5f9; padding: 6px 4px; border-radius: 6px; margin-bottom: 8px; font-size: 0.75rem; font-weight: bold; color: #475569;">
                     <div style="flex: 1.8;">📍 ชื่อสาขา</div>
@@ -315,7 +318,6 @@ if not full_df.empty:
                     col_name, col_act, col_sync = st.columns([1.8, 1.1, 1.1])
                     
                     with col_name:
-                        # 💡 เอา white-space: nowrap ออก เพื่อให้ชื่อสาขายาวๆ สามารถตัดลงมาสองบรรทัดได้ ไม่โดนตัด ...
                         st.markdown(f"<div style='font-size: 0.8rem; font-weight: 500; line-height: 1.3; padding-top: 2px; color: #1e293b; word-break: break-word;' title='{shop}'>{display_shop_name}</div>", unsafe_allow_html=True)
                     
                     with col_act:
@@ -323,7 +325,6 @@ if not full_df.empty:
                         if t_active_key not in st.session_state:
                             st.session_state[t_active_key] = updated_settings[shop]["active"]
                         
-                        # หุ้ม ID ไว้ให้ CSS สีเขียวมาจับทำงานได้ถูกต้อง 🟢
                         st.markdown(f'<div id="tog_act_wrap_{shop}">', unsafe_allow_html=True)
                         val_active = st.toggle("Active", key=t_active_key, label_visibility="collapsed")
                         st.markdown('</div>', unsafe_allow_html=True)
@@ -333,7 +334,6 @@ if not full_df.empty:
                         if t_sync_key not in st.session_state:
                             st.session_state[t_sync_key] = updated_settings[shop]["disable_sync"]
                         
-                        # หุ้ม ID ไว้ให้ CSS สีแดงมาจับทำงานได้ถูกต้อง 🔴
                         st.markdown(f'<div id="tog_sync_wrap_{shop}">', unsafe_allow_html=True)
                         val_sync = st.toggle("Block", key=t_sync_key, label_visibility="collapsed")
                         st.markdown('</div>', unsafe_allow_html=True)
@@ -342,7 +342,7 @@ if not full_df.empty:
                         "active": val_active,
                         "disable_sync": val_sync
                     }
-                    st.markdown("<div style='margin: 4px 0; border-bottom: 1px solid #f1f5f9;'></div>", unsafe_allow_html=True);
+                    st.markdown("<div style='margin: 4px 0; border-bottom: 1px solid #f1f5f9;'></div>", unsafe_allow_html=True)
                     
             st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
             if st.button("💾 บันทึกการตั้งค่าสาขา", type="primary", use_container_width=True, key="save_shops"):

@@ -197,4 +197,143 @@ with st.sidebar:
     st.markdown("<hr style='border:none; border-top:1px solid #e2e8f0; margin:8px 0;'>", unsafe_allow_html=True)
 
     # 4. Settings (แสดงเฉพาะหน้าแรกตามปกติ)
-    if selected_brand == "🛑 SELECT
+    if selected_brand == "🛑 SELECT BRAND 🛑":
+        with st.expander("👤 User Configuration", expanded=False):
+            pwd = st.text_input("กรอกรหัสผ่านเพื่อแก้ไข", type="password", key="admin_pwd")
+            if pwd == "SYN1234":
+                st.success("Login Success")
+                new_monitors = {}
+                all_brands = list(BRAND_CONFIG.keys())
+                for i, brand in enumerate(all_brands):
+                    saved = monitors_config.get(brand, {})
+                    cfg_color = saved.get("color", DEFAULT_COLORS[i % len(DEFAULT_COLORS)])
+                    cfg_order = saved.get("order", i + 1)
+                    
+                    st.markdown(f"<div style='border-left:4px solid {cfg_color}; padding-left:7px; font-size:0.9rem; font-weight:700; margin-top:10px; margin-bottom:5px;'>{brand}</div>", unsafe_allow_html=True)
+                    
+                    c_ord, c1, c2, c3 = st.columns([0.7, 2, 2, 1])
+                    with c_ord: 
+                        ord_val = st.number_input("ลำดับ", value=int(cfg_order), min_value=1, step=1, key=f"mon_ord_{brand}", label_visibility="collapsed")
+                    with c1: 
+                        m1_val = st.text_input("มือ1", value=saved.get("m1",""), key=f"mon_m1_{brand}", label_visibility="collapsed", placeholder="มือ 1")
+                    with c2: 
+                        m2_val = st.text_input("มือ2", value=saved.get("m2",""), key=f"mon_m2_{brand}", label_visibility="collapsed", placeholder="มือ 2")
+                    with c3: 
+                        color_val = st.color_picker("Color", value=cfg_color, key=f"mon_color_{brand}", label_visibility="collapsed")
+                    
+                    new_monitors[brand] = {
+                        "m1": m1_val.strip(), 
+                        "m2": m2_val.strip(), 
+                        "color": color_val,
+                        "order": int(ord_val)
+                    }
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("💾 บันทึกการตั้งค่า", type="primary", use_container_width=True):
+                    current_full_config["_monitors"] = new_monitors
+                    save_config(current_full_config)
+                    st.success("บันทึกสำเร็จ!")
+                    st.rerun()
+            elif pwd != "":
+                st.error("รหัสผ่านไม่ถูกต้อง")
+
+# --- 4. MAIN CONTENT (WELCOME PAGE) ---
+if selected_brand == "🛑 SELECT BRAND 🛑":
+    st.markdown("""
+        <style>
+        [data-testid="stAppViewBlockContainer"] { padding: 0 !important; max-width: 100% !important; }
+        .full-screen-welcome {
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            height: 100vh; width: 100%; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; color: white; text-align: center;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1); padding: 60px; border-radius: 40px;
+        }
+        </style>
+        <div class="full-screen-welcome">
+            <div class="glass-card">
+                <div style="font-size: 5rem; margin-bottom: 20px;">📈</div>
+                <h1 style="font-size: 4rem; font-weight: 800;">Sales Monitoring System</h1>
+                <p style="font-size: 1.2rem; opacity: 0.7;">History&Realtime Tracking Dashboard</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    st.stop()
+
+# --- 5. DASHBOARD VIEW ---
+header_mode_suffix = "(Real-time)" if "⚡ Real-time" in view_mode else "(History Log)"
+st.markdown(f"### 📊 Sales Monitoring Heatmap : {selected_brand} <small style='color:#666; font-size:14px;'>{header_mode_suffix}</small>", unsafe_allow_html=True)
+
+# ── ดึงค่า URL จาก BRAND_CONFIG ที่อยู่ในโค้ดมาใช้และแสดงผล ──
+target_brand_url = f"https://api.npoint.io/{BRAND_CONFIG[selected_brand]}"
+st.markdown(f"🔗 **API Source:** `{target_brand_url}`")
+
+full_df = get_data_from_api(target_brand_url)
+
+# --- 6. RENDER HEATMAP TABLE ---
+if not full_df.empty:
+    shops = sorted(full_df['shop_name'].unique())
+    brand_settings = current_full_config.get(selected_brand, {})
+
+    with st.sidebar:
+        st.markdown("---")
+        with st.expander("🚫 จัดการ เปิด/ปิด สาขา", expanded=False):
+            search_query = st_keyup("🔍 ค้นหาสาขา...", key=f"keyup_search_{selected_brand}").strip().lower()
+            master_key = f"master_{selected_brand}"
+            def on_master_change():
+                for s in shops: st.session_state[f"tog_{selected_brand}_{s}"] = st.session_state[master_key]
+            
+            all_on = all(brand_settings.get(s, True) for s in shops)
+            st.toggle("🔔 **เปิด/ปิด ทั้งหมด**", value=all_on, key=master_key, on_change=on_master_change)
+
+            updated_settings = {s: st.session_state.get(f"tog_{selected_brand}_{s}", brand_settings.get(s, True)) for s in shops}
+            filtered_shops = [s for s in shops if search_query in s.lower()] if search_query else shops
+
+            for shop in filtered_shops:
+                t_key = f"tog_{selected_brand}_{shop}"
+                if t_key not in st.session_state: st.session_state[t_key] = brand_settings.get(shop, True)
+                updated_settings[shop] = st.toggle(f"{shop}", key=t_key)
+
+            if st.button("💾 บันทึกการตั้งค่า", type="primary", use_container_width=True, key="save_shops"):
+                current_full_config[selected_brand] = updated_settings
+                save_config(current_full_config)
+                st.success("บันทึกสำเร็จ!")
+                st.rerun()
+        
+        if st.button("🔙 Back to Main Page", key="back_to_welcome", use_container_width=True):
+            st.session_state.selected_brand = "🛑 SELECT BRAND 🛑"
+            st.rerun()
+
+    mask = (full_df['sync_date'].dt.month == m) & (full_df['sync_date'].dt.year == y)
+    df_filtered = full_df[mask].copy()
+    _, last_day = calendar.monthrange(y, m)
+    days = list(range(1, last_day + 1))
+    grid_df = pd.DataFrame("N/A", index=shops, columns=days)
+
+    if not df_filtered.empty:
+        df_filtered['Day'] = df_filtered['sync_date'].dt.day
+        for shop in shops:
+            if not brand_settings.get(shop, True): grid_df.loc[shop] = "DISABLED"
+        
+        for _, row in df_filtered.iterrows():
+            s, d = row['shop_name'], row['Day']
+            
+            # เลือกสถานะตามโหมดที่เลือก (Fallback ไปที่ status_code ถ้าไม่มีฟิลด์ใหม่)
+            if "⚡ Real-time" in view_mode:
+                st_code = row.get('status_realtime', row.get('status_code', 0))
+            else:
+                st_code = row.get('status_log', row.get('status_code', 0))
+
+            if s in grid_df.index and grid_df.at[s, d] != "DISABLED":
+                grid_df.at[s, d] = "✅" if st_code == 2 else "⚠️" if st_code == 1 else "❌" if st_code == 0 else "N/A"
+
+    active_shops = [s for s in shops if brand_settings.get(s, True)]
+    active_grid = grid_df.loc[active_shops] if active_shops else pd.DataFrame()
+
+    with summary_placeholder.container():
+        monitor_info = monitors_config.get(selected_brand, {})
+        m1_n, m2_n = monitor_info.get("m1", ""), monitor_info.get("m2", "")
+        if m1_n or m2_n:
+            parts =

@@ -302,7 +302,7 @@ if not full_df.empty:
                 <div style="display: flex; background-color: #f1f5f9; padding: 6px 4px; border-radius: 6px; margin-bottom: 8px; font-size: 0.75rem; font-weight: bold; color: #475569;">
                     <div style="flex: 2;">📍 ชื่อสาขา</div>
                     <div style="flex: 1; text-align: center;">เปิด-ปิดสาขา</div>
-                    <div style="flex: 1; text-align: center;">เปิด-ปิดดึงยอด</div>
+                    <div style="flex: 1; text-align: center;">ปิดการดึงยอด</div>
                 </div>
             """, unsafe_allow_html=True)
 

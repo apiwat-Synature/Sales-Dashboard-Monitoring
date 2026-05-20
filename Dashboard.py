@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 💡 [ปรับแต่งเพิ่มเติม] ใส่ CSS Custom Style ให้กับสวิตช์ Toggle ทั้งสองประเภทแยกสีกันชัดเจน
+# 💡 ใส่ CSS Custom Style ให้กับสวิตช์ Toggle ทั้งสองประเภทแยกสีกันชัดเจน
 st.markdown("""
     <style>
     [data-testid="stSidebarContent"] { padding-top: 0rem !important; }
@@ -36,7 +36,7 @@ st.markdown("""
     /* ปรับขนาดตัวอักษรในช่อง Input ของหน้า Config */
     div[data-testid="stExpander"] input { font-size: 0.9rem !important; }
 
-/* 🟢 คอลัมน์ที่ 2 (แสดงผล) → สีเขียว — ใช้ :has() + span แทน div */
+    /* 🟢 คอลัมน์ที่ 2 (แสดงผล) → สีเขียว — ใช้ :has() + span แทน div */
     [data-testid="stExpander"] [data-testid="column"]:nth-child(2) [data-testid="stToggle"] label:has(input:checked) > span:first-of-type {
         background-color: #28a745 !important;
         border-color: #28a745 !important;
@@ -307,8 +307,28 @@ if not full_df.empty:
 
             filtered_shops = [s for s in shops if search_query in s.lower()] if search_query else shops
 
-            # หัวตารางแบบคลีนๆ สบายสายตา
-# หัวตารางแบบคลีนๆ
+            # ➕ --- เพิ่มปุ่ม Select All / Deselect All ทั้งสองฝั่ง ---
+            col_all_act, col_all_sync = st.columns(2)
+            with col_all_act:
+                # ตรวจสอบสถานะฝั่ง Active ปัจจุบัน (ถ้าเปิดหมด ให้ปุ่มเป็นปิดหมด)
+                all_act_state = all(updated_settings[s]["active"] for s in filtered_shops) if filtered_shops else False
+                act_btn_label = "⬜ Deselect All (เปิดร้าน)" if all_act_state else "⬛ Select All (เปิดร้าน)"
+                if st.button(act_btn_label, key=f"btn_all_act_{selected_brand}", use_container_width=True):
+                    for s in filtered_shops:
+                        st.session_state[f"tog_act_{selected_brand}_{s}"] = not all_act_state
+                    st.rerun()
+
+            with col_all_sync:
+                # ตรวจสอบสถานะฝั่ง Block ปัจจุบัน (ถ้าปิดหมด ให้ปุ่มเป็นเปิดหมด)
+                all_sync_state = all(updated_settings[s]["disable_sync"] for s in filtered_shops) if filtered_shops else False
+                sync_btn_label = "⬜ Deselect All (ปิดส่งยอด)" if all_sync_state else "⬛ Select All (ปิดส่งยอด)"
+                if st.button(sync_btn_label, key=f"btn_all_sync_{selected_brand}", use_container_width=True):
+                    for s in filtered_shops:
+                        st.session_state[f"tog_sync_{selected_brand}_{s}"] = not all_sync_state
+                    st.rerun()
+            # --------------------------------------------------
+
+            # หัวตารางแบบคลีนๆ
             st.markdown("""
                 <div style="display: flex; background-color: #f1f5f9; padding: 6px 4px; border-radius: 6px; margin-bottom: 8px; font-size: 0.75rem; font-weight: bold; color: #475569;">
                     <div style="flex: 1.8;">📍 ชื่อสาขา</div>
@@ -324,7 +344,6 @@ if not full_df.empty:
                     col_name, col_act, col_sync = st.columns([1.8, 1.1, 1.1])
                     
                     with col_name:
-                        # 💡 เอา white-space: nowrap ออก เพื่อให้ชื่อสาขายาวๆ สามารถตัดลงมาสองบรรทัดได้ ไม่โดนตัด ...
                         st.markdown(f"<div style='font-size: 0.8rem; font-weight: 500; line-height: 1.3; padding-top: 2px; color: #1e293b; word-break: break-word;' title='{shop}'>{display_shop_name}</div>", unsafe_allow_html=True)
                     
                     with col_act:

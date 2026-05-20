@@ -312,8 +312,8 @@ if not full_df.empty:
             st.markdown("""
                 <div style="display: flex; background-color: #f1f5f9; padding: 6px 4px; border-radius: 6px; margin-bottom: 8px; font-size: 0.75rem; font-weight: bold; color: #475569;">
                     <div style="flex: 1.8;">📍 ชื่อสาขา</div>
-                    <div style="flex: 1.1; text-align: center;">แสดงผล</div>
-                    <div style="flex: 1.1; text-align: center;">ระงับดึงยอด</div>
+                    <div style="flex: 1.1; text-align: center;">เปิด-ปิดร้าน</div>
+                    <div style="flex: 1.1; text-align: center;">เปิด-ปิดส่งยอด</div>
                 </div>
             """, unsafe_allow_html=True)
 

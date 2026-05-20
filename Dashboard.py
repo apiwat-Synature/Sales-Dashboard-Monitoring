@@ -336,4 +336,36 @@ if not full_df.empty:
         monitor_info = monitors_config.get(selected_brand, {})
         m1_n, m2_n = monitor_info.get("m1", ""), monitor_info.get("m2", "")
         if m1_n or m2_n:
-            parts =
+            parts = [f"มือ{i+1}: <b>{p}</b>" for i, p in enumerate([x for x in [m1_n, m2_n] if x])]
+            st.markdown(f'<div style="font-size:0.75rem; color:#555; margin-bottom:4px;">👤 Monitor: {" | ".join(parts)}</div>', unsafe_allow_html=True)
+        
+        st.info(f"Monitor: **{len(active_shops)}** / **{len(shops)}** สาขา")
+        if not active_grid.empty:
+            prob_count = active_grid.isin(["⚠️", "❌"]).any(axis=1).sum()
+            col1, col2 = st.columns(2)
+            col1.metric("ปกติ ✅", len(active_shops) - prob_count)
+            col2.metric("ปัญหา ⚠️/❌", prob_count)
+
+            prob_sum = (active_grid == "❌").sum(axis=1) + (active_grid == "⚠️").sum(axis=1)
+            top_prob = prob_sum[prob_sum > 0].sort_values(ascending=False).head(3)
+            if not top_prob.empty:
+                st.markdown("---")
+                st.write("**⚠️ สาขาที่พบปัญหาบ่อยเดือนนี้:**")
+                for shop, count in top_prob.items():
+                    st.markdown(
+                        f'<div class="problem-item"><b>{shop}</b><br>'
+                        f'<span style="color:#d32f2f; font-size:0.75rem;">พบปัญหา {int(count)} ครั้ง</span></div>',
+                        unsafe_allow_html=True
+                    )
+
+    def apply_style(val):
+        if val == "✅": return 'background-color: #d4edda; color: #155724;'
+        if val == "⚠️": return 'background-color: #fff3cd; color: #856404;'
+        if val == "❌": return 'background-color: #f8d7da; color: #721c24;'
+        if val == "DISABLED": return 'background-color: #6c757d; color: transparent;'
+        return 'color: #ced4da; font-size: 10px;'
+
+    st.dataframe(grid_df.style.map(apply_style), use_container_width=True, height=800,
+                 column_config={d: st.column_config.Column(width=35) for d in days})
+else:
+    st.warning("⚠️ ไม่พบข้อมูลสำหรับแบรนด์นี้")

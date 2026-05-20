@@ -36,18 +36,26 @@ st.markdown("""
     /* ปรับขนาดตัวอักษรในช่อง Input ของหน้า Config */
     div[data-testid="stExpander"] input { font-size: 0.9rem !important; }
 
-/* 🟢 คอลัมน์ที่ 2 (Active) ใน Expander → สีเขียว */
-    [data-testid="stExpander"] [data-testid="column"]:nth-child(2) [data-testid="stToggle"] input:checked + div,
-    [data-testid="stExpander"] [data-testid="column"]:nth-child(2) [data-testid="stToggle"] input:checked ~ div {
+/* 🟢 คอลัมน์ที่ 2 (แสดงผล) → สีเขียว — ใช้ :has() + span แทน div */
+    [data-testid="stExpander"] [data-testid="column"]:nth-child(2) [data-testid="stToggle"] label:has(input:checked) > span:first-of-type {
         background-color: #28a745 !important;
+        border-color: #28a745 !important;
+    }
+    /* fallback: input + span sibling */
+    [data-testid="stExpander"] [data-testid="column"]:nth-child(2) input[type="checkbox"]:checked + span {
+        background-color: #28a745 !important;
+        border-color: #28a745 !important;
     }
 
-    /* 🔴 คอลัมน์ที่ 3 (Block) ใน Expander → สีแดง */
-    [data-testid="stExpander"] [data-testid="column"]:nth-child(3) [data-testid="stToggle"] input:checked + div,
-    [data-testid="stExpander"] [data-testid="column"]:nth-child(3) [data-testid="stToggle"] input:checked ~ div {
+    /* 🔴 คอลัมน์ที่ 3 (ระงับดึงยอด) → สีแดง */
+    [data-testid="stExpander"] [data-testid="column"]:nth-child(3) [data-testid="stToggle"] label:has(input:checked) > span:first-of-type {
         background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
     }
-    
+    [data-testid="stExpander"] [data-testid="column"]:nth-child(3) input[type="checkbox"]:checked + span {
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
+    }    
     </style>
     """, unsafe_allow_html=True)
 

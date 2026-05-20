@@ -207,12 +207,10 @@ with st.sidebar:
                 for i, brand in enumerate(all_brands):
                     saved = monitors_config.get(brand, {})
                     cfg_color = saved.get("color", DEFAULT_COLORS[i % len(DEFAULT_COLORS)])
-                    # ดึงค่า order เดิมมาแสดง ถ้าไม่มีให้ใช้ลำดับปัจจุบัน (i+1)
                     cfg_order = saved.get("order", i + 1)
                     
                     st.markdown(f"<div style='border-left:4px solid {cfg_color}; padding-left:7px; font-size:0.9rem; font-weight:700; margin-top:10px; margin-bottom:5px;'>{brand}</div>", unsafe_allow_html=True)
                     
-                    # เพิ่ม c_ord เข้ามาด้านหน้าสุดเพื่อกรอกตัวเลขลำดับ
                     c_ord, c1, c2, c3 = st.columns([0.7, 2, 2, 1])
                     with c_ord: 
                         ord_val = st.number_input("ลำดับ", value=int(cfg_order), min_value=1, step=1, key=f"mon_ord_{brand}", label_visibility="collapsed")
@@ -223,7 +221,6 @@ with st.sidebar:
                     with c3: 
                         color_val = st.color_picker("Color", value=cfg_color, key=f"mon_color_{brand}", label_visibility="collapsed")
                     
-                    # บันทึกค่า order ลงไปใน dictionary ด้วย
                     new_monitors[brand] = {
                         "m1": m1_val.strip(), 
                         "m2": m2_val.strip(), 
@@ -269,10 +266,8 @@ if selected_brand == "🛑 SELECT BRAND 🛑":
 header_mode_suffix = "(Real-time)" if "⚡ Real-time" in view_mode else "(History Log)"
 st.markdown(f"### 📊 Sales Monitoring Heatmap : {selected_brand} <small style='color:#666; font-size:14px;'>{header_mode_suffix}</small>", unsafe_allow_html=True)
 
-# ─── โชว์ค่า URL ของแบรนด์ที่ดึงค่ามาจาก BRAND_CONFIG ในโค้ด (ไม่มีช่องแก้ ดึงมาแสดงเฉยๆ) ───
 st.markdown(f"🔗 **API Source:** `https://api.npoint.io/{BRAND_CONFIG[selected_brand]}`")
 
-# บรรทัดดึงข้อมูลดั้งเดิมของคุณ (ไม่มีการยุ่งเกี่ยวกับการแก้ตัวแปร)
 full_df = get_data_from_api(f"https://api.npoint.io/{BRAND_CONFIG[selected_brand]}")
 
 if not full_df.empty:
@@ -281,24 +276,48 @@ if not full_df.empty:
 
     with st.sidebar:
         st.markdown("---")
-        with st.expander("🚫 จัดการ เปิด/ปิด สาขา", expanded=False):
+        with st.expander("🚫 จัดการ เปิด/ปิด / ดึงยอด สาขา", expanded=False):
             search_query = st_keyup("🔍 ค้นหาสาขา...", key=f"keyup_search_{selected_brand}").strip().lower()
-            master_key = f"master_{selected_brand}"
-            def on_master_change():
-                for s in shops: st.session_state[f"tog_{selected_brand}_{s}"] = st.session_state[master_key]
             
-            all_on = all(brand_settings.get(s, True) for s in shops)
-            st.toggle("🔔 **เปิด/ปิด ทั้งหมด**", value=all_on, key=master_key, on_change=on_master_change)
+            # ดึงค่า configuration เก่ามาแมป (รองรับทั้ง Dict รูปแบบใหม่ และ True/False รูปแบบเก่า)
+            updated_settings = {}
+            for s in shops:
+                old_val = brand_settings.get(s, True)
+                if isinstance(old_val, dict):
+                    updated_settings[s] = {
+                        "active": old_val.get("active", True),
+                        "disable_sync": old_val.get("disable_sync", False)
+                    }
+                else:
+                    updated_settings[s] = {
+                        "active": old_val,
+                        "disable_sync": False
+                    }
 
-            updated_settings = {s: st.session_state.get(f"tog_{selected_brand}_{s}", brand_settings.get(s, True)) for s in shops}
             filtered_shops = [s for s in shops if search_query in s.lower()] if search_query else shops
 
             for shop in filtered_shops:
-                t_key = f"tog_{selected_brand}_{shop}"
-                if t_key not in st.session_state: st.session_state[t_key] = brand_settings.get(shop, True)
-                updated_settings[shop] = st.toggle(f"{shop}", key=t_key)
+                st.markdown(f"**📍 {shop}**")
+                
+                # ปุ่มที่ 1: เปิด/ปิด การแสดงผลสาขา (Active/Inactive สำหรับส่งเมล)
+                t_active_key = f"tog_act_{selected_brand}_{shop}"
+                if t_active_key not in st.session_state:
+                    st.session_state[t_active_key] = updated_settings[shop]["active"]
+                val_active = st.toggle("เปิดใช้งานสาขา", key=t_active_key)
+                
+                # ปุ่มที่ 2: ปิดส่งยอดขาย (Disable Sync -> ส่งไปเป็นเงื่อนไขให้ฝั่งสาขาขึ้น Out of Warranty)
+                t_sync_key = f"tog_sync_{selected_brand}_{shop}"
+                if t_sync_key not in st.session_state:
+                    st.session_state[t_sync_key] = updated_settings[shop]["disable_sync"]
+                val_sync = st.toggle("🛑 ปิดดึงยอดขาย (Out of Warranty)", key=t_sync_key)
+                
+                updated_settings[shop] = {
+                    "active": val_active,
+                    "disable_sync": val_sync
+                }
+                st.markdown("<div style='margin-bottom:8px; border-bottom:1px dashed #eee;'></div>", unsafe_allow_html=True)
 
-            if st.button("💾 บันทึกการตั้งค่า", type="primary", use_container_width=True, key="save_shops"):
+            if st.button("💾 บันทึกการตั้งค่าสาขา", type="primary", use_container_width=True, key="save_shops"):
                 current_full_config[selected_brand] = updated_settings
                 save_config(current_full_config)
                 st.success("บันทึกสำเร็จ!")
@@ -317,12 +336,14 @@ if not full_df.empty:
     if not df_filtered.empty:
         df_filtered['Day'] = df_filtered['sync_date'].dt.day
         for shop in shops:
-            if not brand_settings.get(shop, True): grid_df.loc[shop] = "DISABLED"
+            s_cfg = brand_settings.get(shop, True)
+            is_active = s_cfg.get("active", True) if isinstance(s_cfg, dict) else s_cfg
+            if not is_active: 
+                grid_df.loc[shop] = "DISABLED"
         
         for _, row in df_filtered.iterrows():
             s, d = row['shop_name'], row['Day']
             
-            # --- เลือกสถานะตามโหมดที่เลือก (Fallback ไปที่ status_code ถ้าไม่มีฟิลด์ใหม่) ---
             if "⚡ Real-time" in view_mode:
                 st_code = row.get('status_realtime', row.get('status_code', 0))
             else:
@@ -331,7 +352,15 @@ if not full_df.empty:
             if s in grid_df.index and grid_df.at[s, d] != "DISABLED":
                 grid_df.at[s, d] = "✅" if st_code == 2 else "⚠️" if st_code == 1 else "❌" if st_code == 0 else "N/A"
 
-    active_shops = [s for s in shops if brand_settings.get(s, True)]
+    # กรองสาขาที่ไม่ได้ปิดทิ้งไปในการคำนวณ Summary
+    active_shops = []
+    for s in shops:
+        s_cfg = brand_settings.get(s, True)
+        if isinstance(s_cfg, dict):
+            if s_cfg.get("active", True): active_shops.append(s)
+        elif s_cfg:
+            active_shops.append(s)
+            
     active_grid = grid_df.loc[active_shops] if active_shops else pd.DataFrame()
 
     with summary_placeholder.container():
@@ -354,11 +383,8 @@ if not full_df.empty:
                 st.markdown("---")
                 st.write("**⚠️ สาขาที่พบปัญหาบ่อยเดือนนี้:**")
                 for shop, count in top_prob.items():
-                    # 💡 แก้ไขจุดบั๊กตรงนี้: แปลงเป็นตัวเลขก่อนนำมานับ/แสดงผล เพื่อป้องกัน TypeError จาก "N/A" หรือคำสั่งสัญกรณ์อื่น ๆ 
-                    try:
-                        display_count = int(count)
-                    except:
-                        display_count = 0
+                    try: display_count = int(count)
+                    except: display_count = 0
                         
                     st.markdown(
                         f'<div class="problem-item"><b>{shop}</b><br>'
